@@ -1,0 +1,190 @@
+(function(){
+'use strict';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const N=(id,label,type,x,y,sub='',key=id,w=112)=>({id,label,type,x,y,sub,key,w,h:64});
+const E=(from,to,label='')=>({from,to,label});
+const S=(event,v,explain,edge=false)=>({event,v,explain,edge});
+const commonClock='A rising clock edge samples the logic value at D; Q holds between edges.';
+const scenes={
+  '01':[
+    {name:'D flip-flop',lead:'D means data. The D input is copied into Q at the rising edge.',formula:'Q⁺ = D',nodes:[N('d','D','input',42,108),N('ff','D flip-flop','ff',380,108,'rising edge','Q',150),N('q','Q','output',735,108)],edges:[E('d','ff','data'),E('ff','q','stored')],rows:[['D','D'],['Q','Q']],samples:[S('initial',{D:0,Q:0},'Q starts at 0.'),S('D←1',{D:1,Q:0},'Input D changes; stored Q still holds.'),S('clock ↑',{D:1,Q:1},'At this edge, Q copies the pre-edge D=1.',true),S('D←0',{D:0,Q:1},'Changing D between edges does not change Q.'),S('clock ↑',{D:0,Q:0},'The next rising edge copies D=0.',true)]},
+    {name:'T flip-flop',lead:'T means toggle. T=0 holds Q; T=1 complements Q at the edge.',formula:'D = Q ⊕ T, so Q⁺ = Q ⊕ T',nodes:[N('t','T','input',35,50),N('qfb','Q feedback','input',35,178,'present state','Q'),N('xor','XOR','xor',300,107,'different → 1','D'),N('ff','D flip-flop','ff',580,107,'implements T','Q',150)],edges:[E('t','xor'),E('qfb','xor'),E('xor','ff','D')],rows:[['T','T'],['D','D'],['Q','Q']],samples:[S('initial',{T:0,Q:0,D:0},'T=0 makes D equal Q: hold.'),S('T←1',{T:1,Q:0,D:1},'XOR now requests the opposite state.'),S('clock ↑',{T:1,Q:1,D:0},'The edge toggles Q to 1; feedback recomputes D=0.',true),S('clock ↑',{T:1,Q:0,D:1},'With T still 1, the next edge toggles Q back to 0.',true),S('T←0',{T:0,Q:0,D:0},'T=0 restores the hold condition.') ]},
+    {name:'JK flip-flop',lead:'J sets, K resets; when both are 1 the stored bit toggles.',formula:'D = J·Q̅ + K̅·Q (for a D flip-flop implementation)',nodes:[N('j','J','input',22,35),N('nq','Q̅','input',22,102,'complement','nQ'),N('nk','K̅','input',22,172,'inverted K','nK'),N('qfb','Q','input',22,239,'feedback','Q'),N('a1','AND','and',265,60,'J·Q̅','p1'),N('a2','AND','and',265,190,'K̅·Q','p2'),N('or','OR','or',500,125,'next D','D'),N('ff','D flip-flop','ff',730,125,'rising edge','Q',145)],edges:[E('j','a1'),E('nq','a1'),E('nk','a2'),E('qfb','a2'),E('a1','or'),E('a2','or'),E('or','ff')],height:325,rows:[['J','J'],['K','K'],['D','D'],['Q','Q']],samples:[S('hold',{J:0,K:0,Q:0,nQ:1,nK:1,p1:0,p2:0,D:0},'J=K=0: the feedback term preserves Q.'),S('J←1',{J:1,K:0,Q:0,nQ:1,nK:1,p1:1,p2:0,D:1},'J=1, K=0 requests set.'),S('clock ↑',{J:1,K:0,Q:1,nQ:0,nK:1,p1:0,p2:1,D:1},'Q becomes 1 at the edge.',true),S('K←1',{J:1,K:1,Q:1,nQ:0,nK:0,p1:0,p2:0,D:0},'J=K=1 requests a toggle; D is opposite Q.'),S('clock ↑',{J:1,K:1,Q:0,nQ:1,nK:0,p1:1,p2:0,D:1},'Q toggles to 0; feedback now requests 1 at the next edge.',true)]},
+    {name:'Clocked SR flip-flop',lead:'S means set; R means reset. The basic active-high SR control pair 11 is forbidden.',formula:'For valid inputs: D = S + R̅·Q; sample D at clock ↑',nodes:[N('s','S','input',24,42),N('nr','R̅','input',24,175,'R through NOT','nR'),N('qfb','Q','input',24,245,'feedback','Q'),N('and','AND','and',275,190,'R̅·Q','hold'),N('or','OR','or',495,105,'S + R̅Q','D'),N('ff','D flip-flop','ff',735,105,'rising edge','Q',145)],edges:[E('s','or'),E('nr','and'),E('qfb','and'),E('and','or'),E('or','ff')],height:320,rows:[['S','S'],['R','R'],['D','D'],['Q','Q']],samples:[S('hold',{S:0,R:0,nR:1,Q:0,hold:0,D:0},'S=R=0: Q holds.'),S('S←1',{S:1,R:0,nR:1,Q:0,hold:0,D:1},'Set is requested, but Q waits for a clock edge.'),S('clock ↑',{S:1,R:0,nR:1,Q:1,hold:1,D:1},'Q becomes 1.',true),S('S←0',{S:0,R:0,nR:1,Q:1,hold:1,D:1},'Feedback holds Q=1.'),S('R←1',{S:0,R:1,nR:0,Q:1,hold:0,D:0},'Reset is requested.'),S('clock ↑',{S:0,R:1,nR:0,Q:0,hold:0,D:0},'Q becomes 0.',true)],note:'The equation models only valid SR inputs. Do not apply it to S=R=1.'}
+  ],
+  '02':[{name:'Analyze the feedback circuit',lead:'Trace the XOR into D, then use the clock to update Q. The AND gate gives the Mealy output immediately.',formula:'D = X ⊕ Q; Z = X·Q; at clock ↑, Q⁺ = D',nodes:[N('x','X','input',20,40),N('qfb','Q','input',20,170,'present state','Q'),N('xor','XOR','xor',280,45,'next bit','D'),N('and','AND','and',280,190,'Mealy Z','Z'),N('ff','D flip-flop','ff',570,45,'rising edge','Q',150),N('z','Z','output',735,190)],edges:[E('x','xor'),E('qfb','xor'),E('xor','ff'),E('x','and'),E('qfb','and'),E('and','z')],rows:[['X','X'],['D','D'],['Q','Q'],['Z','Z']],samples:[S('start',{X:0,Q:0,D:0,Z:0},'X=0 and Q=0. The XOR requests D=0.'),S('X←1',{X:1,Q:0,D:1,Z:0},'D changes to 1 immediately; Q still holds 0.'),S('clock ↑',{X:1,Q:1,D:0,Z:1},'The edge stores pre-edge D=1. Now Z=XQ=1.',true),S('X←0',{X:0,Q:1,D:1,Z:0},'Mealy output Z falls without a clock edge.'),S('clock ↑',{X:0,Q:1,D:1,Z:0},'Q remains 1 because pre-edge D=1.',true)]}],
+  '03':[{name:'Shared-clock mod-6 counter',lead:'Three D flip-flops receive the same clock. Combinational gates compute the entire next code before the edge.',formula:'D₀=¬Q₀·¬(Q₂Q₁); D₁=¬Q₂·(Q₁⊕Q₀); D₂=¬Q₂Q₁Q₀+Q₂¬Q₁¬Q₀',nodes:[N('q','Q₂Q₁Q₀','input',35,112,'present code','Q',142),N('g','AND / XOR / OR','logic',303,112,'next-state gates','D',176),N('ff','three D flip-flops','ff',635,112,'common clock','Q',200)],edges:[E('q','g','feedback'),E('g','ff','D₂D₁D₀')],rows:[['Q₂Q₁Q₀','Q'],['D₂D₁D₀','D']],samples:[S('reset',{Q:'000',D:'001'},'Before the first edge, next-state logic requests 001.'),S('clock ↑',{Q:'001',D:'010'},'All three bits update together to 001.',true),S('clock ↑',{Q:'010',D:'011'},'Next count is 010.',true),S('clock ↑',{Q:'011',D:'100'},'The 011→100 transition changes three bits at one shared edge.',true),S('clock ↑',{Q:'100',D:'101'},'Next count is 100.',true),S('clock ↑',{Q:'101',D:'000'},'Next count is 101.',true),S('clock ↑',{Q:'000',D:'001'},'The sixth edge wraps to 000.',true),S('force 110',{Q:'110',D:'000'},'Unused code 110 is assigned recovery to 000.'),S('clock ↑',{Q:'000',D:'001'},'Recovery occurs on the next shared edge.',true)]}],
+  '04':[
+    {name:'Ripple counter',lead:'Only the first toggle stage receives the external clock. Each falling Q output clocks the next stage after a delay.',formula:'T₂=T₁=T₀=1; CLK₁=Q₀, CLK₂=Q₁ (falling-edge stages)',nodes:[N('clk','CLK ↓','input',15,110,'external','CLK'),N('ff0','T FF₀','ff',225,110,'T=1; ↓ clock','Q0',150),N('ff1','T FF₁','ff',480,110,'Q₀ ↓ clock','Q1',150),N('ff2','T FF₂','ff',735,110,'Q₁ ↓ clock','Q2',150)],edges:[E('clk','ff0'),E('ff0','ff1','Q₀'),E('ff1','ff2','Q₁')],rows:[['Q₂','Q2'],['Q₁','Q1'],['Q₀','Q0']],samples:[S('settled 011',{Q2:0,Q1:1,Q0:1,CLK:1},'Start at the settled code 011.'),S('external ↓',{Q2:0,Q1:1,Q0:0,CLK:0},'The external falling edge toggles Q₀: temporary 010.',true),S('Q₀ ↓',{Q2:0,Q1:0,Q0:0,CLK:0},'Q₀ falling clocks Q₁: temporary 000.',true),S('Q₁ ↓',{Q2:1,Q1:0,Q0:0,CLK:0},'Q₁ falling clocks Q₂: final 100.',true)],note:'Intermediate codes can briefly activate a decoder. The illustrated equal spacing is conceptual; real propagation delays vary.'},
+    {name:'Asynchronous SR latch',lead:'Two cross-coupled NOR gates store one bit. S and R act immediately; there is no clock.',formula:'Q=¬(R+Q̅), Q̅=¬(S+Q); S=R=1 is forbidden',nodes:[N('r','R','input',20,38),N('s','S','input',20,185),N('norq','NOR','nor',345,38,'Q=¬(R+Q̅)','Q'),N('nornq','NOR','nor',345,185,'Q̅=¬(S+Q)','nQ'),N('outq','Q','output',710,38),N('outnq','Q̅','output',710,185,'','nQ')],edges:[E('r','norq'),E('s','nornq'),E('norq','outq'),E('nornq','outnq'),{path:'M 770 112 V 160 H 304 V 217 H 345',label:'feedback'},{path:'M 770 217 V 274 H 280 V 70 H 345',label:''}],height:315,rows:[['S','S'],['R','R'],['Q','Q'],['Q̅','nQ']],samples:[S('hold',{S:0,R:0,Q:0,nQ:1},'With S=R=0, feedback preserves Q=0.'),S('S←1',{S:1,R:0,Q:1,nQ:0},'S=1 sets Q immediately; no clock edge is needed.'),S('S←0',{S:0,R:0,Q:1,nQ:0},'After S returns to 0, feedback holds Q=1.'),S('R←1',{S:0,R:1,Q:0,nQ:1},'R=1 resets Q immediately.'),S('R←0',{S:0,R:0,Q:0,nQ:1},'The latch now holds Q=0.')],note:'Do not assert S=R=1 for this active-high NOR latch.'}
+  ],
+  '05':[
+    {name:'Four-stage shift register',lead:'Each D flip-flop passes its stored bit to the next stage on the same rising edge.',formula:'Q₃⁺=Serial in; Q₂⁺=Q₃; Q₁⁺=Q₂; Q₀⁺=Q₁',nodes:[N('in','Serial in','input',12,107,'','IN',125),N('f3','D FF₃','ff',205,107,'Q₃','Q3',130),N('f2','D FF₂','ff',390,107,'Q₂','Q2',130),N('f1','D FF₁','ff',575,107,'Q₁','Q1',130),N('f0','D FF₀','ff',760,107,'serial out','Q0',130)],edges:[E('in','f3'),E('f3','f2'),E('f2','f1'),E('f1','f0')],rows:[['Serial in','IN'],['Q₃Q₂Q₁Q₀','Q']],samples:[S('reset',{IN:0,Q:'0000',Q3:0,Q2:0,Q1:0,Q0:0},'All four stages are clear.'),S('in←1',{IN:1,Q:'0000',Q3:0,Q2:0,Q1:0,Q0:0},'The first bit waits at the serial input.'),S('clock ↑',{IN:1,Q:'1000',Q3:1,Q2:0,Q1:0,Q0:0},'One edge stores the bit in Q₃.',true),S('in←0',{IN:0,Q:'1000',Q3:1,Q2:0,Q1:0,Q0:0},'The input changes between edges.'),S('clock ↑',{IN:0,Q:'0100',Q3:0,Q2:1,Q1:0,Q0:0},'The 1 moves one stage to the right.',true),S('clock ↑',{IN:0,Q:'0010',Q3:0,Q2:0,Q1:1,Q0:0},'Another edge moves the 1 to Q₁.',true),S('clock ↑',{IN:0,Q:'0001',Q3:0,Q2:0,Q1:0,Q0:1},'The bit reaches serial output Q₀.',true)]},
+    {name:'Ring and Johnson feedback',lead:'A ring returns Q₀ to the first D input. A Johnson counter returns its complement.',formula:'Ring: D₃=Q₀; Johnson: D₃=¬Q₀; remaining bits shift right',nodes:[N('f3','D FF₃','ff',70,90,'Q₃','Q3',145),N('f2','D FF₂','ff',290,90,'Q₂','Q2',145),N('f1','D FF₁','ff',510,90,'Q₁','Q1',145),N('f0','D FF₀','ff',730,90,'Q₀','Q0',145),N('fb','feedback','logic',385,230,'Q₀ or ¬Q₀','FB',150)],edges:[E('f3','f2'),E('f2','f1'),E('f1','f0'),{path:'M 805 154 V 263 H 535',label:'Q₀'},{path:'M 385 263 H 140 V 154',label:'to D₃'}],height:315,rows:[['Q₃Q₂Q₁Q₀','Q'],['feedback','FB']],samples:[S('ring seed',{Q:'1000',Q3:1,Q2:0,Q1:0,Q0:0,FB:0},'A one-hot seed starts the ring.'),S('clock ↑',{Q:'0100',Q3:0,Q2:1,Q1:0,Q0:0,FB:0},'The 1 moves right.',true),S('clock ↑',{Q:'0010',Q3:0,Q2:0,Q1:1,Q0:0,FB:0},'The 1 moves right again.',true),S('clock ↑',{Q:'0001',Q3:0,Q2:0,Q1:0,Q0:1,FB:1},'Q₀=1 is now the feedback bit.',true),S('clock ↑',{Q:'1000',Q3:1,Q2:0,Q1:0,Q0:0,FB:0},'The one returns to Q₃; four states repeat.',true)],note:'The circuit selector in the laboratory below also shows the eight-state Johnson cycle.'}
+  ],
+  '06':[{name:'101 detector: gates and state bits',lead:'Two state flip-flops remember the useful suffix. The output AND gate pulses when state S₂ meets input 1.',formula:'Codes S₀=00, S₁=01, S₂=10. D₁=Q₀·¬X; D₀=X; Z=Q₁·X',nodes:[N('x','X','input',16,37),N('q0','Q₀','input',16,157),N('not','NOT','not',225,37,'¬X','nX'),N('and1','AND','and',420,100,'D₁','D1'),N('andz','AND','and',420,212,'Z','Z'),N('ff','two D FFs','ff',700,90,'state Q₁Q₀','Q',170)],edges:[E('x','not'),E('not','and1'),E('q0','and1'),E('and1','ff'),E('x','andz'),E('andz','ff','output separate')],height:310,rows:[['X','X'],['state Q₁Q₀','Q'],['Z','Z']],samples:[S('S₀',{X:0,Q:'00',Q0:0,nX:1,D1:0,Z:0},'No useful suffix is stored.'),S('X←1',{X:1,Q:'00',Q0:0,nX:0,D1:0,Z:0},'Input 1 prepares next state S₁ (D₀=X).'),S('clock ↑',{X:1,Q:'01',Q0:1,nX:0,D1:0,Z:0},'Store suffix 1: state S₁.',true),S('X←0',{X:0,Q:'01',Q0:1,nX:1,D1:1,Z:0},'D₁=1 prepares suffix 10.'),S('clock ↑',{X:0,Q:'10',Q0:0,nX:1,D1:0,Z:0},'Store suffix 10: state S₂.',true),S('X←1',{X:1,Q:'10',Q0:0,nX:0,D1:0,Z:1},'Z=Q₁X rises immediately: 101 detected.'),S('clock ↑',{X:1,Q:'01',Q0:1,nX:0,D1:0,Z:0},'Store suffix 1 again, enabling overlap.',true)]}],
+  '07':[
+    {name:'ROM',lead:'A and B form a two-bit address. The ROM selects the stored output word for that address.',formula:'ROM: 00→00, 01→10, 10→10, 11→01 (word FG)',nodes:[N('a','A','input',25,35),N('b','B','input',25,170),N('rom','4 × 2 ROM','rom',355,90,'address → word','FG',190),N('fg','F,G','output',735,90,'','FG',135)],edges:[E('a','rom'),E('b','rom'),E('rom','fg','2-bit word')],rows:[['A','A'],['B','B'],['F','F'],['G','G']],samples:[S('00',{A:0,B:0,F:0,G:0,FG:'00'},'Address 00 selects word FG=00.'),S('01',{A:0,B:1,F:1,G:0,FG:'10'},'Address 01 selects word FG=10.'),S('10',{A:1,B:0,F:1,G:0,FG:'10'},'Address 10 selects word FG=10.'),S('11',{A:1,B:1,F:0,G:1,FG:'01'},'Address 11 selects word FG=01.')],note:'The ROM output changes with the address after propagation delay; no storage clock is shown.'},
+    {name:'PLA',lead:'Programmable AND terms form minterms; programmable OR connections combine them into outputs.',formula:'P₁=A̅B, P₂=AB̅, P₃=AB; F=P₁+P₂, G=P₃',nodes:[N('ab','A,B','input',20,105,'','AB',130),N('p1','AND P₁','and',255,24,'A̅B','P1',135),N('p2','AND P₂','and',255,112,'AB̅','P2',135),N('p3','AND P₃','and',255,200,'AB','P3',135),N('or','OR','or',575,65,'F=P₁+P₂','F',135),N('g','G=P₃','output',740,205,'','G',130)],edges:[E('ab','p1'),E('ab','p2'),E('ab','p3'),E('p1','or'),E('p2','or'),E('p3','g')],height:300,rows:[['A','A'],['B','B'],['P₁','P1'],['P₂','P2'],['P₃','P3'],['F','F'],['G','G']],samples:[S('00',{A:0,B:0,AB:'00',P1:0,P2:0,P3:0,F:0,G:0},'No product term is active.'),S('01',{A:0,B:1,AB:'01',P1:1,P2:0,P3:0,F:1,G:0},'P₁=A̅B drives F.'),S('10',{A:1,B:0,AB:'10',P1:0,P2:1,P3:0,F:1,G:0},'P₂=AB̅ drives F.'),S('11',{A:1,B:1,AB:'11',P1:0,P2:0,P3:1,F:0,G:1},'P₃=AB drives G.') ]},
+    {name:'PAL',lead:'A PAL also programs product terms, but each output has a fixed allocation of OR inputs.',formula:'F uses fixed OR slots P₁ and P₂; G uses the P₃ slot',nodes:[N('ab','A,B','input',18,105,'','AB',130),N('p1','AND P₁','and',255,25,'A̅B','P1',135),N('p2','AND P₂','and',255,115,'AB̅','P2',135),N('p3','AND P₃','and',255,205,'AB','P3',135),N('or','fixed OR','or',570,68,'F slots 1,2','F',140),N('g','G slot 3','output',740,205,'','G',130)],edges:[E('ab','p1'),E('ab','p2'),E('ab','p3'),E('p1','or'),E('p2','or'),E('p3','g')],height:300,rows:[['A','A'],['B','B'],['F','F'],['G','G']],samples:[S('00',{A:0,B:0,AB:'00',P1:0,P2:0,P3:0,F:0,G:0},'Both outputs are 0.'),S('01',{A:0,B:1,AB:'01',P1:1,P2:0,P3:0,F:1,G:0},'P₁ occupies one fixed F slot.'),S('10',{A:1,B:0,AB:'10',P1:0,P2:1,P3:0,F:1,G:0},'P₂ occupies the other F slot.'),S('11',{A:1,B:1,AB:'11',P1:0,P2:0,P3:1,F:0,G:1},'P₃ feeds the fixed G output path.')],note:'The simplified example uses two F terms and one G term; actual PAL capacities depend on the part.'}
+  ],
+  '08':[{name:'After merging B and C',lead:'Equivalent states B and C share one implementation state M. Gates now realize the reduced three-state machine.',formula:'A=00, M={B,C}=01, D=10. N=Q₁+XQ₀; D₁=N, D₀=¬N; Z=Q₁',nodes:[N('x','X','input',20,40),N('q0','Q₀','input',20,165),N('and','AND','and',260,100,'XQ₀','P'),N('or','OR','or',480,100,'N=Q₁+P','N'),N('not','NOT','not',655,195,'D₀=¬N','D0'),N('ff','two D FFs','ff',720,55,'reduced state','Q',170)],edges:[E('x','and'),E('q0','and'),E('and','or'),E('or','ff','D₁'),E('or','not','D₀')],height:300,rows:[['X','X'],['state Q₁Q₀','Q'],['N','N'],['Z','Z']],samples:[S('A, X=0',{X:0,Q:'00',Q0:0,P:0,N:0,D0:1,Z:0},'From A, input 0 prepares state M.'),S('clock ↑',{X:0,Q:'01',Q0:1,P:0,N:0,D0:1,Z:0},'The machine enters merged state M.',true),S('X←1',{X:1,Q:'01',Q0:1,P:1,N:1,D0:0,Z:0},'From M, input 1 prepares D.'),S('clock ↑',{X:1,Q:'10',Q0:0,P:0,N:1,D0:0,Z:1},'State D has Moore output Z=1.',true),S('X←0',{X:0,Q:'10',Q0:0,P:0,N:1,D0:0,Z:1},'D remains D for either input.')],note:'The state reduction is behavioral; the displayed gates are one possible encoding of the reduced table.'}],
+  '09':[
+    {name:'Binary state assignment',lead:'Three reduced states need two state bits. This assignment gives a compact two-flip-flop circuit.',formula:'A=00, M=01, D=10; D₁=Q₁+XQ₀; D₀=¬D₁; Z=Q₁',nodes:[N('x','X','input',25,42),N('q0','Q₀','input',25,160),N('and','AND','and',265,105,'XQ₀','P'),N('or','OR','or',480,105,'D₁','N'),N('not','NOT','not',650,205,'D₀','D0'),N('ff','2 D flip-flops','ff',720,70,'Q₁Q₀','Q',170)],edges:[E('x','and'),E('q0','and'),E('and','or'),E('or','ff'),E('or','not')],height:300,rows:[['X','X'],['Q₁Q₀','Q'],['Z','Z']],samples:[S('A',{X:0,Q:'00',Q0:0,P:0,N:0,D0:1,Z:0},'Code 00 represents A.'),S('clock ↑',{X:0,Q:'01',Q0:1,P:0,N:0,D0:1,Z:0},'The machine enters M=01.',true),S('X←1',{X:1,Q:'01',Q0:1,P:1,N:1,D0:0,Z:0},'Input 1 prepares D=10.'),S('clock ↑',{X:1,Q:'10',Q0:0,P:0,N:1,D0:0,Z:1},'Code 10 represents D and produces Z=1.',true)]},
+    {name:'One-hot state assignment',lead:'One flip-flop per reduced state makes the active state visible as a single 1.',formula:'D_A=0; D_M=A+M·¬X; D_D=D+M·X; Z=D',nodes:[N('x','X','input',20,35),N('m','M','input',20,145,'state bit','M'),N('and','AND','and',275,125,'M·X','MX'),N('or','OR','or',505,125,'D_D=D+MX','DD'),N('ff','3 D flip-flops','ff',735,125,'A,M,D','Q',165)],edges:[E('x','and'),E('m','and'),E('and','or'),E('or','ff')],rows:[['X','X'],['A M D','Q'],['Z','Z']],samples:[S('A',{X:0,A:1,M:0,D:0,MX:0,DD:0,Q:'100',Z:0},'A=100 uses one active state bit.'),S('clock ↑',{X:0,A:0,M:1,D:0,MX:0,DD:0,Q:'010',Z:0},'The active bit moves to M.',true),S('X←1',{X:1,A:0,M:1,D:0,MX:1,DD:1,Q:'010',Z:0},'M·X prepares state D.'),S('clock ↑',{X:1,A:0,M:0,D:1,MX:0,DD:1,Q:'001',Z:1},'The active bit moves to D.',true)],note:'One-hot uses three flip-flops here; binary uses two. The gate count depends on the chosen code and target device.'}
+  ],
+  '10':[{name:'Transmitter: controller and datapath',lead:'The controller enables LOAD or SHIFT. Each register bit uses a data selector before its D flip-flop.',formula:'For each bit i: Dᵢ=LOAD·Wᵢ + SHIFT·Qᵢ₊₁ + HOLD·Qᵢ; serial out=Q₀ during SHIFT',nodes:[N('state','FSM','logic',20,90,'IDLE/LOAD/SHIFT/DONE','STATE',145),N('load','LOAD','input',240,25,'','LOAD'),N('shift','SHIFT','input',240,175,'','SHIFT'),N('mux','AND–OR select','logic',480,92,'one-bit slice','D',175),N('reg','4 D flip-flops','ff',735,92,'shift register','Q',175)],edges:[E('state','load'),E('state','shift'),E('load','mux'),E('shift','mux'),E('mux','reg','D₃…D₀')],rows:[['start','START'],['LOAD','LOAD'],['SHIFT','SHIFT'],['Q₃Q₂Q₁Q₀','Q'],['serial valid','VALID'],['done','DONE']],samples:[S('IDLE',{START:0,LOAD:0,SHIFT:0,Q:'0000',VALID:0,DONE:0,STATE:'IDLE',D:'hold'},'The controller waits for start.'),S('start←1',{START:1,LOAD:0,SHIFT:0,Q:'0000',VALID:0,DONE:0,STATE:'IDLE',D:'hold'},'Start is asserted before the next edge.'),S('clock ↑',{START:1,LOAD:1,SHIFT:0,Q:'0000',VALID:0,DONE:0,STATE:'LOAD',D:'word'},'Controller enters LOAD.',true),S('clock ↑',{START:1,LOAD:0,SHIFT:1,Q:'1011',VALID:0,DONE:0,STATE:'SHIFT',D:'shift'},'The word 1011 is captured in parallel.',true),S('clock ↑',{START:1,LOAD:0,SHIFT:1,Q:'0101',VALID:1,DONE:0,STATE:'SHIFT',D:'shift'},'First bit emitted: 1 (old Q₀).',true),S('clock ↑',{START:1,LOAD:0,SHIFT:1,Q:'0010',VALID:1,DONE:0,STATE:'SHIFT',D:'shift'},'Second bit emitted: 1.',true),S('clock ↑',{START:1,LOAD:0,SHIFT:1,Q:'0001',VALID:1,DONE:0,STATE:'SHIFT',D:'shift'},'Third bit emitted: 0.',true),S('clock ↑',{START:1,LOAD:0,SHIFT:0,Q:'0000',VALID:1,DONE:1,STATE:'DONE',D:'hold'},'Final bit emitted: 1; DONE is asserted.',true)],note:'The output bit at each SHIFT edge is the pre-edge Q₀. The counter tracks four shifts; it is omitted from this one-bit gate slice.'}]
+};
+
+// Add the explicit inversion and feedback paths that students must identify in a schematic.
+const jk=scenes['01'][2];
+const jkInv=jk.nodes.find(n=>n.id==='nk');jkInv.x=155;jkInv.label='NOT K';jkInv.type='not';jkInv.sub='K̅';
+jk.nodes.push(N('k','K','input',22,172));jk.edges.push(E('k','nk'));
+const sr=scenes['01'][3];
+const srInv=sr.nodes.find(n=>n.id==='nr');srInv.x=155;srInv.label='NOT R';srInv.type='not';srInv.sub='R̅';
+sr.nodes.push(N('r','R','input',22,175));sr.edges.push(E('r','nr'));
+scenes['01'].splice(1,0,{
+  name:'Transparent D latch',lead:'A D latch is level-sensitive. While enable is 1, Q follows D; when enable returns to 0, Q holds.',
+  formula:'S=EN·D; R=EN·D̅; the active-high SR latch stores Q',
+  nodes:[N('d','D','input',18,25),N('en','EN','input',18,225,'enable level'),N('not','NOT','not',205,25,'D̅','nD'),N('set','AND','and',430,75,'S=EN·D','S'),N('reset','AND','and',430,205,'R=EN·D̅','R'),N('latch','NOR latch','latch',740,132,'cross-coupled','Q',155)],
+  edges:[E('d','not'),E('d','set'),E('en','set'),E('en','reset'),E('not','reset'),E('set','latch'),E('reset','latch')],height:305,
+  rows:[['EN','EN'],['D','D'],['Q','Q']],
+  samples:[S('closed',{EN:0,D:0,Q:0,nD:1,S:0,R:0},'EN=0: both latch controls are 0, so Q holds.'),S('EN←1',{EN:1,D:0,Q:0,nD:1,S:0,R:1},'Enable opens the latch. D=0 drives reset.'),S('D←1',{EN:1,D:1,Q:1,nD:0,S:1,R:0},'With EN=1, Q follows D immediately.'),S('D←0',{EN:1,D:0,Q:0,nD:1,S:0,R:1},'Q follows the new D=0 without a clock edge.'),S('EN←0',{EN:0,D:0,Q:0,nD:1,S:0,R:0},'Closing the latch stores Q=0.'),S('D←1',{EN:0,D:1,Q:0,nD:0,S:0,R:0},'D changes but Q remains stored while EN=0.'),S('EN←1',{EN:1,D:1,Q:1,nD:0,S:1,R:0},'Reopening the latch lets Q follow D=1.')],
+  note:'The enable input is a level, not a clock edge. The simple SR latch earlier in this lesson shows the two cross-coupled NOR gates.'
+});
+
+const simpleSr={
+  name:'Simple active-high SR latch',lead:'Two NOR gates store one bit. S sets Q; R resets Q; with S=R=0 the cross-feedback holds the previous value.',
+  formula:'Q=¬(R+Q̅); Q̅=¬(S+Q). No clock is required.',
+  nodes:[N('r','R','input',20,40),N('fbn','Q̅ feedback','input',20,125,'from lower NOR','nQ',145),N('noru','NOR','nor',350,78,'Q=¬(R+Q̅)','Q',150),N('qout','Q','output',715,78,'','Q'),N('s','S','input',20,225),N('fbq','Q feedback','input',20,310,'from upper NOR','Q',145),N('norl','NOR','nor',350,263,'Q̅=¬(S+Q)','nQ',150),N('qbout','Q̅','output',715,263,'','nQ')],
+  edges:[E('r','noru'),E('fbn','noru'),E('noru','qout'),E('s','norl'),E('fbq','norl'),E('norl','qbout')],height:390,
+  rows:[['S','S'],['R','R'],['Q','Q'],['Q̅','nQ']],
+  samples:[S('hold',{S:0,R:0,Q:0,nQ:1},'S=R=0: cross-feedback holds Q=0.'),S('S←1',{S:1,R:0,Q:1,nQ:0},'S=1 sets Q to 1 immediately.'),S('S←0',{S:0,R:0,Q:1,nQ:0},'After S returns to 0, feedback holds Q=1.'),S('R←1',{S:0,R:1,Q:0,nQ:1},'R=1 resets Q to 0 immediately.'),S('R←0',{S:0,R:0,Q:0,nQ:1},'The latch again holds its state.')],
+  note:'The Q and Q̅ feedback inputs are the opposite NOR outputs, shown as separate labelled lines so neither input path crosses another. S=R=1 is forbidden.'
+};
+simpleSr.edges.push({path:'M 827 110 H 895 V 378 H 12 V 342 H 20',feedback:true},{path:'M 827 295 H 868 V 14 H 12 V 157 H 20',feedback:true});
+const gatedSr={
+  name:'Gated SR latch',lead:'Enable E passes S and R through two AND gates. E=0 blocks both controls and holds Q; E=1 lets the SR latch respond.',
+  formula:'Sg=E·S; Rg=E·R; Q=¬(Rg+Q̅); Q̅=¬(Sg+Q)',
+  nodes:[N('r','R','input',15,20),N('eu','E','input',15,103,'enable','E'),N('rg','AND','and',230,60,'Rg=E·R','Rg'),N('fbn','Q̅ feedback','input',435,5,'','nQ',138),N('noru','NOR','nor',615,62,'Q','Q',128),N('qout','Q','output',795,62,'','Q',105),N('s','S','input',15,215),N('el','E','input',15,298,'enable','E'),N('sg','AND','and',230,255,'Sg=E·S','Sg'),N('fbq','Q feedback','input',435,200,'','Q',138),N('norl','NOR','nor',615,257,'Q̅','nQ',128),N('qbout','Q̅','output',795,257,'','nQ',105)],
+  edges:[E('r','rg'),E('eu','rg'),E('fbn','noru'),E('rg','noru'),E('noru','qout'),E('s','sg'),E('el','sg'),E('fbq','norl'),E('sg','norl'),E('norl','qbout')],height:365,
+  rows:[['E','E'],['S','S'],['R','R'],['Sg','Sg'],['Rg','Rg'],['Q','Q']],
+  samples:[S('E=0',{E:0,S:0,R:0,Sg:0,Rg:0,Q:0,nQ:1},'Enable is low; both gated controls are 0.'),S('S←1',{E:0,S:1,R:0,Sg:0,Rg:0,Q:0,nQ:1},'S changes, but E=0 blocks it. Q holds.'),S('E←1',{E:1,S:1,R:0,Sg:1,Rg:0,Q:1,nQ:0},'Enable goes high. Sg=1 sets Q immediately.'),S('E←0',{E:0,S:1,R:0,Sg:0,Rg:0,Q:1,nQ:0},'With E=0, the latch holds Q=1.'),S('R←1',{E:0,S:0,R:1,Sg:0,Rg:0,Q:1,nQ:0},'R is requested while E=0, so Q still holds.'),S('E←1',{E:1,S:0,R:1,Sg:0,Rg:1,Q:0,nQ:1},'Enable goes high. Rg=1 resets Q immediately.')],
+  note:'E is a level, not a clock edge. The forbidden active-high case is E=1 with S=R=1. Feedback inputs are labelled separately for clarity.'
+};
+const introScenes=scenes['01'];
+scenes['01']=[simpleSr,gatedSr,introScenes.find(x=>x.name==='Transparent D latch'),introScenes.find(x=>x.name==='D flip-flop'),introScenes.find(x=>x.name==='T flip-flop'),introScenes.find(x=>x.name==='JK flip-flop'),introScenes.find(x=>x.name==='Clocked SR flip-flop')];
+const dLatch=scenes['01'][2];
+dLatch.nodes=[N('d','D','input',20,20),N('en','E','input',20,105,'enable','EN'),N('set','AND','and',315,65,'S=E·D','S'),N('d2','D','input',20,205,'same input','D'),N('not','NOT','not',220,205,'D̅','nD'),N('en2','E','input',20,300,'same enable','EN'),N('reset','AND','and',435,245,'R=E·D̅','R'),N('latch','SR storage','latch',730,140,'NOR pair','Q',165)];
+dLatch.edges=[E('d','set'),E('en','set'),E('d2','not'),E('not','reset'),E('en2','reset'),E('set','latch'),E('reset','latch')];
+dLatch.height=380;
+
+const detector=scenes['06'][0];
+detector.nodes.push(N('d0','D₀=X','output',455,12,'','D0',130),N('q1','Q₁','input',16,247,'','Q1'),N('zout','Z','output',735,212,'','Z'));
+detector.edges.pop();detector.edges.push(E('x','d0'),E('d0','ff'),E('q1','andz'),E('andz','zout'));
+detector.height=335;
+detector.samples.forEach(t=>{t.v.Q1=Number(t.v.Q[0]);t.v.D0=t.v.X});
+
+scenes['05'].push({
+  name:'Johnson counter',lead:'The complement of the last stage returns to the first D input, doubling the four-stage ring to eight states.',
+  formula:'D₃=¬Q₀; D₂=Q₃; D₁=Q₂; D₀=Q₁',
+  nodes:[N('f3','D FF₃','ff',70,90,'Q₃','Q3',145),N('f2','D FF₂','ff',290,90,'Q₂','Q2',145),N('f1','D FF₁','ff',510,90,'Q₁','Q1',145),N('f0','D FF₀','ff',730,90,'Q₀','Q0',145),N('inv','NOT','not',385,230,'¬Q₀','FB',150)],
+  edges:[E('f3','f2'),E('f2','f1'),E('f1','f0'),{path:'M 805 154 V 263 H 535'},{path:'M 385 263 H 140 V 154'}],height:315,
+  rows:[['Q₃Q₂Q₁Q₀','Q'],['¬Q₀ feedback','FB']],
+  samples:['0000','1000','1100','1110','1111','0111','0011','0001','0000'].map((q,i)=>S(i?'clock ↑':'reset',{Q:q,Q3:+q[0],Q2:+q[1],Q1:+q[2],Q0:+q[3],FB:q[3]==='1'?0:1},i?`After edge ${i}, the state is ${q}.`:'Start with all zeros; feedback is 1.',i>0)),
+  note:'The feedback bit is the complement of the pre-edge Q₀; all four stages share a clock.'
+});
+scenes['05'].splice(1,0,{
+  name:'Parallel load, then serial output',lead:'A PISO register captures all four input bits at one edge, then emits one bit per later shift edge.',
+  formula:'LOAD chooses the parallel word; SHIFT chooses the shifted feedback word',
+  nodes:[N('w','W₃W₂W₁W₀','input',20,25,'parallel input','W',145),N('load','LOAD','input',20,135),N('shift','SHIFT','input',20,225),N('mux','AND–OR select','logic',350,112,'load or shift','D',190),N('reg','4 D flip-flops','ff',690,112,'stored word','Q',190)],
+  edges:[E('w','mux'),E('load','mux'),E('shift','mux'),E('mux','reg')],height:305,
+  rows:[['LOAD','LOAD'],['SHIFT','SHIFT'],['register Q','Q'],['serial bit Y','Y'],['serial valid','VALID']],
+  samples:[S('reset',{W:'1011',LOAD:0,SHIFT:0,Q:'0000',D:'0000',Y:0,VALID:0},'The register starts empty.'),S('LOAD←1',{W:'1011',LOAD:1,SHIFT:0,Q:'0000',D:'1011',Y:0,VALID:0},'The parallel word is selected but not yet stored.'),S('clock ↑',{W:'1011',LOAD:0,SHIFT:1,Q:'1011',D:'0101',Y:0,VALID:0},'One edge captures all four bits.',true),S('clock ↑',{W:'1011',LOAD:0,SHIFT:1,Q:'0101',D:'0010',Y:1,VALID:1},'First serial bit: old Q₀=1.',true),S('clock ↑',{W:'1011',LOAD:0,SHIFT:1,Q:'0010',D:'0001',Y:1,VALID:1},'Second serial bit: 1.',true),S('clock ↑',{W:'1011',LOAD:0,SHIFT:1,Q:'0001',D:'0000',Y:0,VALID:1},'Third serial bit: 0.',true),S('clock ↑',{W:'1011',LOAD:0,SHIFT:0,Q:'0000',D:'0000',Y:1,VALID:1},'Fourth serial bit: 1.',true)],
+  note:'Each emitted bit is the pre-edge Q₀. A PIPO register would use the same parallel load and expose all Q bits together.'
+});
+
+for(const id of ['08','09']){
+  const reduced=scenes[id][0];
+  reduced.nodes.push(N('q1','Q₁','input',20,245,'feedback','Q1'),N('zout','Z','output',755,245,'Moore output','Z'));
+  reduced.edges.push(E('q1','or'),E('q1','zout'));
+  reduced.height=330;
+  reduced.samples.forEach(t=>{t.v.Q1=Number(t.v.Q[0])});
+}
+
+const transmitter=scenes['10'][0];
+transmitter.lead='The controller selects LOAD, SHIFT or HOLD. Three AND gates and an OR gate drive each register bit.';
+transmitter.nodes=[N('load','LOAD','input',18,15),N('shift','SHIFT','input',18,112),N('hold','HOLD','input',18,215),N('al','AND','and',252,15,'LOAD·W₀','PL'),N('as','AND','and',252,112,'SHIFT·Q₁','PS'),N('ah','AND','and',252,215,'HOLD·Q₀','PH'),N('or','OR','or',535,112,'D₀','D0'),N('reg','D flip-flop','ff',755,112,'register bit Q₀','Q0',145)];
+transmitter.edges=[E('load','al'),E('shift','as'),E('hold','ah'),E('al','or'),E('as','or'),E('ah','or'),E('or','reg')];
+transmitter.height=320;
+transmitter.rows.splice(4,0,['serial bit Y','Y']);
+const emitted=[0,0,0,0,1,1,0,1];
+transmitter.samples.forEach((t,i)=>{const v=t.v;v.HOLD=Number(!(v.LOAD||v.SHIFT));v.Q0=Number(v.Q[3]);v.Q1=Number(v.Q[2]);v.PL=v.LOAD;v.PS=v.SHIFT*v.Q1;v.PH=v.HOLD*v.Q0;v.D0=v.PL|v.PS|v.PH;v.Y=emitted[i]});
+
+for(const circuit of scenes['07'].slice(1)){
+  const pal=circuit.name==='PAL';
+  circuit.nodes=[N('a','A','input',12,16),N('b','B','input',12,225),N('na','NOT','not',155,16,'A̅','nA'),N('nb','NOT','not',155,225,'B̅','nB'),N('p1','AND P₁','and',365,26,'A̅B','P1',135),N('p2','AND P₂','and',365,120,'AB̅','P2',135),N('p3','AND P₃','and',365,215,'AB','P3',135),N('or',pal?'fixed OR':'OR','or',625,75,'F=P₁+P₂','F',140),N('g',pal?'G slot 3':'G=P₃','output',750,215,'','G',130)];
+  circuit.edges=[E('a','na'),E('b','nb'),E('na','p1'),E('b','p1'),E('a','p2'),E('nb','p2'),E('a','p3'),E('b','p3'),E('p1','or'),E('p2','or'),E('p3','g')];
+  circuit.height=305;
+  circuit.samples.forEach(t=>{t.v.nA=1-t.v.A;t.v.nB=1-t.v.B});
+  if(!pal)circuit.note='The NOT gates supply A̅ and B̅. The AND–OR network is combinational: outputs settle after a propagation delay, with no clock.';
+}
+const keyForNode={d:'D',q:'Q',t:'T',j:'J',k:'K',s:'S',r:'R',x:'X',z:'Z',a:'A',b:'B',q0:'Q0',outq:'Q',en:'EN',load:'LOAD',shift:'SHIFT',hold:'HOLD'};
+for(const group of Object.values(scenes))for(const scene of group)for(const node of scene.nodes){
+  if(scene.samples.some(t=>t.v[node.key]===undefined)&&keyForNode[node.id])node.key=keyForNode[node.id];
+}
+
+function gateShape(n){const {x,y,w,h,type}=n,cy=y+h/2;
+  if(type==='and')return `<path d="M${x+10} ${y+4} H${x+w-48} A${h/2-4} ${h/2-4} 0 0 1 ${x+w-48} ${y+h-4} H${x+10} Z"/>`;
+  if(type==='or'||type==='xor'||type==='nor')return `<path d="M${x+10} ${y+4} Q${x+45} ${cy} ${x+10} ${y+h-4} Q${x+w-42} ${y+h-3} ${x+w-7} ${cy} Q${x+w-42} ${y+3} ${x+10} ${y+4} Z"/>${type==='xor'?`<path class="gate-extra" d="M${x+1} ${y+4} Q${x+36} ${cy} ${x+1} ${y+h-4}"/>`:''}${type==='nor'?`<circle cx="${x+w+1}" cy="${cy}" r="7"/>`:''}`;
+  if(type==='not')return `<path d="M${x+10} ${y+5} L${x+w-18} ${cy} L${x+10} ${y+h-5} Z"/><circle cx="${x+w-10}" cy="${cy}" r="7"/>`;
+  if(type==='input'||type==='output')return `<rect x="${x+3}" y="${y+5}" width="${w-6}" height="${h-10}" rx="25"/>`;
+  if(type==='ff')return `<rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" rx="8"/><path class="ff-clock" d="M${x+5} ${y+h-24} l13 10 -13 10"/>`;
+  return `<rect x="${x+2}" y="${y+2}" width="${w-4}" height="${h-4}" rx="10"/>`;
+}
+function circuit(scene,sample){
+  const nmap=Object.fromEntries(scene.nodes.map(n=>[n.id,n]));
+  const incoming={};
+  scene.edges.filter(e=>!e.path).forEach(e=>{(incoming[e.to]??=[]).push(e)});
+  const wire=scene.edges.map(e=>{
+    if(e.path)return `<path class="circuit-wire ${e.feedback?'feedback-wire':''}" d="${e.path}"/>`;
+    const a=nmap[e.from],b=nmap[e.to];if(!a||!b)return '';
+    const x1=a.x+a.w,y1=a.y+a.h/2,x2=b.x+(['or','xor','nor'].includes(b.type)?24:['and','not'].includes(b.type)?10:2);
+    const ports=incoming[e.to],port=ports.indexOf(e),y2=b.y+b.h*(port+1)/(ports.length+1);
+    const mid=x1+(x2-x1)/2;
+    return `<path class="circuit-wire" d="M${x1} ${y1} H${mid} V${y2} H${x2}"/>`;
+  }).join('');
+  const nodes=scene.nodes.map(n=>{
+    const value=sample.v[n.key],active=String(value)==='1';
+    return `<g class="circuit-node ${active?'is-one':''}">${gateShape(n)}<text class="node-label" x="${n.x+n.w/2}" y="${n.y+25}" text-anchor="middle">${esc(n.label)}</text>${n.sub?`<text class="node-sub" x="${n.x+n.w/2}" y="${n.y+46}" text-anchor="middle">${esc(n.sub)}</text>`:''}${value!==undefined?`<text class="node-value" x="${n.x+n.w-8}" y="${n.y+14}" text-anchor="end">${esc(value)}</text>`:''}</g>`;
+  }).join('');
+  return `<svg class="circuit-svg" viewBox="0 0 920 ${scene.height||285}" role="img" aria-label="Gate-level circuit for ${esc(scene.name)}; values at ${esc(sample.event)}"><title>Gate-level circuit: ${esc(scene.name)}</title><desc>${esc(scene.lead)}</desc>${wire}${nodes}</svg>`;
+}
+function timing(scene,active){
+  const count=scene.samples.length,hasClock=scene.samples.some(t=>t.edge&&t.event.includes('↑'));
+  const rows=hasClock?[['CLK','__clock'],...scene.rows]:scene.rows;
+  const left=162,w=920,step=(w-left-20)/count,h=55+rows.length*42;
+  let s=`<svg class="timing-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="Timing diagram for ${esc(scene.name)}; selected event ${esc(scene.samples[active].event)}"><title>Timing diagram: ${esc(scene.name)}</title><rect class="time-selected" x="${left+active*step}" y="2" width="${step}" height="${h-8}" rx="5"/>`;
+  scene.samples.forEach((sample,i)=>{const x=left+i*step;s+=`<line class="time-grid" x1="${x}" y1="39" x2="${x}" y2="${h-8}"/>${sample.edge?`<path class="clock-marker" d="M${x-7} 29 l7 -12 7 12"/>`:''}<text class="time-event" x="${x+step/2}" y="13" text-anchor="middle">${esc(sample.event)}</text>`});
+  rows.forEach(([label,key],ri)=>{
+    const y=55+ri*42;s+=`<text class="time-label" x="6" y="${y+4}">${esc(label)}</text>`;
+    if(key==='__clock'){
+      scene.samples.forEach((t,i)=>{const x=left+i*step,low=y+9,high=y-12,b=x+step*.36;s+=t.edge?`<path class="time-signal clock-wave" d="M${x} ${low} V${high} H${b} V${low} H${x+step}"/>`:`<path class="time-signal clock-wave" d="M${x} ${low} H${x+step}"/>`});
+      return;
+    }
+    const vals=scene.samples.map(t=>String(t.v[key]??'–')),binary=vals.every(v=>v==='0'||v==='1');
+    if(binary){const high=y-12,low=y+9;for(let i=0;i<count;i++){const x=left+i*step,v=vals[i]==='1'?high:low;s+=`<path class="time-signal" d="M${x} ${v} H${x+step}"/>`;if(i&&vals[i]!==vals[i-1]){const prev=vals[i-1]==='1'?high:low;s+=`<path class="time-signal" d="M${x} ${prev} V${v}"/>`}}}
+    else vals.forEach((v,i)=>{const x=left+i*step;s+=`<rect class="time-bus" x="${x+3}" y="${y-17}" width="${step-6}" height="28" rx="4"/><text class="time-bus-text" x="${x+step/2}" y="${y+2}" text-anchor="middle">${esc(v)}</text>`});
+  });
+  return s+'</svg>';
+}
+function mount(items,root,caption='Follow one short example. Select a device or circuit, then advance one event at a time. The gate values and timing trace refer to the same instant.'){
+ if(!items?.length){root.textContent='Diagram unavailable.';return}
+ let which=0,step=0,timer=null;root.innerHTML=`<p class="diagram-intro">${esc(caption)}</p>${items.length>1?`<label class="control diagram-picker">Device or circuit<select class="diagram-select">${items.map((s,i)=>`<option value="${i}">${esc(s.name)}</option>`).join('')}</select></label>`:''}<div class="diagram-lead"></div><div class="diagram-formula"></div><div class="diagram-panel"><h3>Logic gates and storage</h3><div class="diagram-scroll circuit-zone"></div></div><div class="diagram-panel"><h3>Timing diagram</h3><div class="diagram-scroll timing-zone"></div><div class="diagram-controls"><button type="button" class="btn diagram-prev">Previous event</button><button type="button" class="btn primary diagram-next">Next event</button><button type="button" class="btn diagram-play">Play</button><span class="diagram-position" aria-live="polite"></span></div><p class="diagram-explain" aria-live="polite"></p></div><p class="diagram-note"></p>`;
+ const stop=()=>{if(timer){clearInterval(timer);timer=null;root.querySelector('.diagram-play').textContent='Play'}};
+ function draw(){const scene=items[which],sample=scene.samples[step];root.querySelector('.diagram-lead').textContent=scene.lead;root.querySelector('.diagram-formula').textContent=scene.formula;root.querySelector('.circuit-zone').innerHTML=circuit(scene,sample);root.querySelector('.timing-zone').innerHTML=timing(scene,step);root.querySelector('.diagram-position').textContent=`Event ${step+1} of ${scene.samples.length}`;root.querySelector('.diagram-explain').innerHTML=`<strong>${esc(sample.event)}:</strong> ${esc(sample.explain)}`;root.querySelector('.diagram-note').textContent=scene.note||commonClock;root.querySelector('.diagram-prev').disabled=step===0;root.querySelector('.diagram-next').disabled=step===scene.samples.length-1}
+ root.querySelector('.diagram-select')?.addEventListener('change',e=>{stop();which=+e.target.value;step=0;draw()});root.querySelector('.diagram-prev').addEventListener('click',()=>{stop();step=Math.max(0,step-1);draw()});root.querySelector('.diagram-next').addEventListener('click',()=>{stop();step=Math.min(items[which].samples.length-1,step+1);draw()});root.querySelector('.diagram-play').addEventListener('click',()=>{if(timer){stop();return}if(step===items[which].samples.length-1)step=0;draw();root.querySelector('.diagram-play').textContent='Pause';timer=setInterval(()=>{if(step===items[which].samples.length-1){stop();return}step++;draw()},950)});draw();
+}
+function init(id,root){mount(scenes[id],root)}
+window.CIRCUIT_VISUALS={init,mount,scenes};
+})();

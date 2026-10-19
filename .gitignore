@@ -1,0 +1,4 @@
+.visual-qa-*.png
+node_modules/
+*.log
+.DS_Store
