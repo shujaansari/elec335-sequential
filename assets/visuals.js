@@ -134,8 +134,20 @@ for(const group of Object.values(scenes))for(const scene of group)for(const node
   if(scene.samples.some(t=>t.v[node.key]===undefined)&&keyForNode[node.id])node.key=keyForNode[node.id];
 }
 
+// Lecture 18 follows the class sequence: synchronous recap, JK rule, then two ripple traces.
+const rippleNodes=[N('clk','CLK ↓','input',15,90,'external','CLK',118),N('ff0','JK FF₀','ff',185,90,'J=K=1','Q0',145),N('ff1','JK FF₁','ff',405,90,'J=K=1','Q1',145),N('ff2','JK FF₂','ff',625,90,'J=K=1','Q2',145),N('nand','NAND','nand',665,230,'CLRₙ=¬Q₂Q₁','CLR',145)];
+const rippleEdges=[E('clk','ff0'),E('ff0','ff1','Q₀↓'),E('ff1','ff2','Q₁↓'),{path:'M 550 122 V 207 H 690 V 252',label:'Q₁'},{path:'M 770 122 V 195 H 750 V 252',label:'Q₂'},{path:'M 810 262 V 349 H 257 V 156',label:'asynchronous clear',feedback:true},{path:'M 476 349 V 156',feedback:true},{path:'M 696 349 V 156',feedback:true}];
+const rv=(q,clk=0)=>({CLK:clk,Q0:q&1,Q1:(q>>1)&1,Q2:(q>>2)&1,CLR:((q&6)===6)?0:1});
+const rippleBase={lead:'Every JK stage has J=K=1. Q₀ and Q₁ provide the next clock edges; NAND(Q₂,Q₁) supplies active-low asynchronous clear.',formula:'J₀=K₀=J₁=K₁=J₂=K₂=1; CLRₙ=¬(Q₂Q₁)',nodes:rippleNodes,edges:rippleEdges,height:370,rows:[['External CLK','CLK'],['Q₂','Q2'],['Q₁','Q1'],['Q₀','Q0'],['CLRₙ','CLR']],note:'Times are deliberately stretched to show propagation order. The 110 clear pulse is self-terminating; check its minimum width on the selected part.'};
+scenes['04']=[
+ {...scenes['03'][0],name:'Synchronous MOD-6 recap',lead:'All three D flip-flops share one clock. The next-state gates settle before the edge; Q⁺=D for each bit.'},
+ {...scenes['01'].find(x=>x.name==='JK flip-flop'),name:'JK controls and gate equation',lead:'J and K select hold, reset, set or toggle. The AND–OR feedback circuit realizes Q⁺=JQ̅+K̅Q at the chosen falling edge.',samples:scenes['01'].find(x=>x.name==='JK flip-flop').samples.map(t=>({...t,event:t.event==='clock ↑'?'clock ↓':t.event}))},
+ {...rippleBase,name:'Ripple path: 011 to 100',samples:[S('settled 011',rv(3,1),'All stages have settled at 011.'),S('external ↓',rv(2,0),'FF₀ toggles, giving temporary 010.',true),S('Q₀ ↓',rv(0,0),'FF₁ toggles, giving temporary 000.',true),S('Q₁ ↓',rv(4,0),'FF₂ toggles; 100 is the next settled count.',true)]},
+ {...rippleBase,name:'MOD-6 wrap: 101 to 000',samples:[S('settled 101',rv(5,1),'The sixth stable state is 101.'),S('external ↓',rv(4,0),'FF₀ toggles, giving temporary 100.',true),S('Q₀ ↓',rv(6,0),'FF₁ toggles; 110 makes CLRₙ fall to 0.',true),S('clear acts',rv(0,0),'The asynchronous clear resets all three stages to 000; CLRₙ returns high.')]}
+];
+
 function gateShape(n){const {x,y,w,h,type}=n,cy=y+h/2;
-  if(type==='and')return `<path d="M${x+10} ${y+4} H${x+w-48} A${h/2-4} ${h/2-4} 0 0 1 ${x+w-48} ${y+h-4} H${x+10} Z"/>`;
+  if(type==='and'||type==='nand')return `<path d="M${x+10} ${y+4} H${x+w-48} A${h/2-4} ${h/2-4} 0 0 1 ${x+w-48} ${y+h-4} H${x+10} Z"/>${type==='nand'?`<circle cx="${x+w-8}" cy="${cy}" r="7"/>`:''}`;
   if(type==='or'||type==='xor'||type==='nor')return `<path d="M${x+10} ${y+4} Q${x+45} ${cy} ${x+10} ${y+h-4} Q${x+w-42} ${y+h-3} ${x+w-7} ${cy} Q${x+w-42} ${y+3} ${x+10} ${y+4} Z"/>${type==='xor'?`<path class="gate-extra" d="M${x+1} ${y+4} Q${x+36} ${cy} ${x+1} ${y+h-4}"/>`:''}${type==='nor'?`<circle cx="${x+w+1}" cy="${cy}" r="7"/>`:''}`;
   if(type==='not')return `<path d="M${x+10} ${y+5} L${x+w-18} ${cy} L${x+10} ${y+h-5} Z"/><circle cx="${x+w-10}" cy="${cy}" r="7"/>`;
   if(type==='input'||type==='output')return `<rect x="${x+3}" y="${y+5}" width="${w-6}" height="${h-10}" rx="25"/>`;
@@ -161,15 +173,15 @@ function circuit(scene,sample){
   return `<svg class="circuit-svg" viewBox="0 0 920 ${scene.height||285}" role="img" aria-label="Gate-level circuit for ${esc(scene.name)}; values at ${esc(sample.event)}"><title>Gate-level circuit: ${esc(scene.name)}</title><desc>${esc(scene.lead)}</desc>${wire}${nodes}</svg>`;
 }
 function timing(scene,active){
-  const count=scene.samples.length,hasClock=scene.samples.some(t=>t.edge&&t.event.includes('↑'));
-  const rows=hasClock?[['CLK','__clock'],...scene.rows]:scene.rows;
+  const count=scene.samples.length,hasClock=scene.samples.some(t=>t.edge&&(t.event.includes('↑')||t.event.includes('↓'))),fallClock=scene.samples.some(t=>t.edge&&t.event.includes('↓'));
+  const rows=hasClock&&!scene.rows.some(([,key])=>key==='CLK')?[['CLK','__clock'],...scene.rows]:scene.rows;
   const left=162,w=920,step=(w-left-20)/count,h=55+rows.length*42;
   let s=`<svg class="timing-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="Timing diagram for ${esc(scene.name)}; selected event ${esc(scene.samples[active].event)}"><title>Timing diagram: ${esc(scene.name)}</title><rect class="time-selected" x="${left+active*step}" y="2" width="${step}" height="${h-8}" rx="5"/>`;
-  scene.samples.forEach((sample,i)=>{const x=left+i*step;s+=`<line class="time-grid" x1="${x}" y1="39" x2="${x}" y2="${h-8}"/>${sample.edge?`<path class="clock-marker" d="M${x-7} 29 l7 -12 7 12"/>`:''}<text class="time-event" x="${x+step/2}" y="13" text-anchor="middle">${esc(sample.event)}</text>`});
+  scene.samples.forEach((sample,i)=>{const x=left+i*step;s+=`<line class="time-grid" x1="${x}" y1="39" x2="${x}" y2="${h-8}"/>${sample.edge?`<path class="clock-marker" d="${sample.event.includes('↓')?`M${x-7} 17 l7 12 7 -12`:`M${x-7} 29 l7 -12 7 12`}"/>`:''}<text class="time-event" x="${x+step/2}" y="13" text-anchor="middle">${esc(sample.event)}</text>`});
   rows.forEach(([label,key],ri)=>{
     const y=55+ri*42;s+=`<text class="time-label" x="6" y="${y+4}">${esc(label)}</text>`;
     if(key==='__clock'){
-      scene.samples.forEach((t,i)=>{const x=left+i*step,low=y+9,high=y-12,b=x+step*.36;s+=t.edge?`<path class="time-signal clock-wave" d="M${x} ${low} V${high} H${b} V${low} H${x+step}"/>`:`<path class="time-signal clock-wave" d="M${x} ${low} H${x+step}"/>`});
+      scene.samples.forEach((t,i)=>{const x=left+i*step,low=y+9,high=y-12,b=x+step*.36,fall=t.event.includes('↓');s+=t.edge?(fall?`<path class="time-signal clock-wave" d="M${x} ${high} V${low} H${b} V${high} H${x+step}"/>`:`<path class="time-signal clock-wave" d="M${x} ${low} V${high} H${b} V${low} H${x+step}"/>`):`<path class="time-signal clock-wave" d="M${x} ${fallClock?high:low} H${x+step}"/>`});
       return;
     }
     const vals=scene.samples.map(t=>String(t.v[key]??'–')),binary=vals.every(v=>v==='0'||v==='1');

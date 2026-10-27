@@ -11,7 +11,8 @@ const dff=find('01','D flip-flop');
 const jk=find('01','JK flip-flop');
 const analysis=main['02'][0];
 const mod6=main['03'][0];
-const ripple=find('04','Ripple counter');
+const ripple=find('04','Ripple path: 011 to 100');
+const rippleWrap=find('04','MOD-6 wrap: 101 to 000');
 const simpleSr=find('01','Simple active-high SR latch');
 const gatedSr=find('01','Gated SR latch');
 const shift=find('05','Four-stage shift register');
@@ -92,7 +93,7 @@ window.EXAMPLE_VISUALS={
   ],
   '02':[[use(analysis,{name:'Analyze D=X⊕Q and Z=XQ'})],[moore]],
   '03':[[use(mod6,{name:'Design and trace the mod-6 D counter'})],[bitScene('Excitation for 1→0',[S('Q=1',{Q:1,TARGET:1,D:1,T:0,K:0,nTARGET:0},'Initially the bit holds at 1.'),S('target 0',{Q:1,TARGET:0,D:0,T:1,K:1,nTARGET:1},'The requested 1→0 transition needs D=0, T=1, K=1.'),S('clock ↑',{Q:0,TARGET:0,D:0,T:0,K:0,nTARGET:1},'After the edge, Q=0. The original 1→0 request has been completed.',true)])]],
-  '04':[[use(ripple,{name:'Ripple propagation: 011→010→000→100'})],[use(simpleSr,{name:'Asynchronous set/reset event memory'})]],
+  '04':[[use(ripple,{name:'Worked trace: 011 → 100'})],[use(rippleWrap,{name:'Worked trace: 101 → 000 via clear'})]],
   '05':[[use(shift,{name:'SIPO input 1,0,1,1',samples:[S('reset',{IN:0,Q:'0000',Q3:0,Q2:0,Q1:0,Q0:0},'Start with 0000.'),S('1 ↑',{IN:1,Q:'1000',Q3:1,Q2:0,Q1:0,Q0:0},'Enter 1: 1000.',true),S('0 ↑',{IN:0,Q:'0100',Q3:0,Q2:1,Q1:0,Q0:0},'Enter 0: 0100.',true),S('1 ↑',{IN:1,Q:'1010',Q3:1,Q2:0,Q1:1,Q0:0},'Enter 1: 1010.',true),S('1 ↑',{IN:1,Q:'1101',Q3:1,Q2:1,Q1:0,Q0:1},'Enter 1: 1101.',true)]})],[use(johnson,{name:'Eight-state Johnson cycle'})]],
   '06':[[detectorTrace],[encoding5]],
   '07':[[use(main['07'][0],{name:'ROM: four stored words'}),use(main['07'][1],{name:'PLA: three product terms'})],[use(main['07'][2],{name:'PAL fixed OR allocation'})]],
