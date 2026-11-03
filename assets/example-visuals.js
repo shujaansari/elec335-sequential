@@ -39,7 +39,7 @@ const moore={
   samples:[S('S₀',{X:0,Q:0,D:0},'State S₀ has Moore output Z=0.'),S('X←1',{X:1,Q:0,D:1},'X=1 prepares a toggle.'),S('clock ↑',{X:1,Q:1,D:0},'The machine enters S₁; Z becomes 1 after the edge.',true),S('X←0',{X:0,Q:1,D:1},'X=0 prepares a hold.'),S('clock ↑',{X:0,Q:1,D:1},'State and output remain 1.',true),S('X←1',{X:1,Q:1,D:0},'X=1 prepares another toggle.'),S('clock ↑',{X:1,Q:0,D:1},'The machine returns to S₀; Z becomes 0.',true)]
 };
 
-const detectorValues=(x,q)=>({X:x,Q:q,Q0:+q[1],Q1:+q[0],nX:1-x,D1:(+q[1])*(1-x),D0:x,Z:(+q[0])*x});
+const detectorValues=(x,q)=>{const a=+q[0],b=+q[1],V=1-(a&b);return {X:x,Q:q,Q0:b,Q1:a,nX:1-x,nQ1:1-a,nQ0:1-b,V,D1:(1-a)&b&(1-x),D0:V&x,Z:a&(1-b)&x};};
 const detectorTrace=use(detector,{name:'Detect overlapping 101 in 10101',samples:[
   S('reset',detectorValues(0,'00'),'S₀ stores no useful suffix.'),
   S('1',detectorValues(1,'00'),'The first 1 prepares S₁.'),
@@ -95,7 +95,7 @@ window.EXAMPLE_VISUALS={
   '03':[[use(mod6,{name:'Design and trace the mod-6 D counter'})],[bitScene('Excitation for 1→0',[S('Q=1',{Q:1,TARGET:1,D:1,T:0,K:0,nTARGET:0},'Initially the bit holds at 1.'),S('target 0',{Q:1,TARGET:0,D:0,T:1,K:1,nTARGET:1},'The requested 1→0 transition needs D=0, T=1, K=1.'),S('clock ↑',{Q:0,TARGET:0,D:0,T:0,K:0,nTARGET:1},'After the edge, Q=0. The original 1→0 request has been completed.',true)])]],
   '04':[[use(ripple,{name:'Worked trace: 011 → 100'})],[use(rippleWrap,{name:'Worked trace: 101 → 000 via clear'})]],
   '05':[[use(shift,{name:'SIPO input 1,0,1,1',samples:[S('reset',{IN:0,Q:'0000',Q3:0,Q2:0,Q1:0,Q0:0},'Start with 0000.'),S('1 ↑',{IN:1,Q:'1000',Q3:1,Q2:0,Q1:0,Q0:0},'Enter 1: 1000.',true),S('0 ↑',{IN:0,Q:'0100',Q3:0,Q2:1,Q1:0,Q0:0},'Enter 0: 0100.',true),S('1 ↑',{IN:1,Q:'1010',Q3:1,Q2:0,Q1:1,Q0:0},'Enter 1: 1010.',true),S('1 ↑',{IN:1,Q:'1101',Q3:1,Q2:1,Q1:0,Q0:1},'Enter 1: 1101.',true)]})],[use(johnson,{name:'Eight-state Johnson cycle'})]],
-  '06':[[detectorTrace],[encoding5]],
+  '06':[[detectorTrace],[use(detector,{name:'1101: one detection at bit 4',samples:[S('reset',detectorValues(0,'00'),'Start in S₀.'),S('1',detectorValues(1,'00'),'Prepare S₁.'),S('clock ↑',detectorValues(1,'01'),'Store S₁.',true),S('1 again',detectorValues(1,'01'),'The useful ending is still 1.'),S('clock ↑',detectorValues(1,'01'),'Stay in S₁.',true),S('0',detectorValues(0,'01'),'Prepare S₂.'),S('clock ↑',detectorValues(0,'10'),'Store S₂.',true),S('1',detectorValues(1,'10'),'The S₂, X=1 ASM branch asserts Z.'),S('clock ↑',detectorValues(1,'01'),'Record detection at bit 4 and return to S₁.',true)]})]],
   '07':[[use(main['07'][0],{name:'ROM: four stored words'}),use(main['07'][1],{name:'PLA: three product terms'})],[use(main['07'][2],{name:'PAL fixed OR allocation'})]],
   '08':[[use(comparison,{name:'Implication check: merge B and C'})],[use(comparison,{name:'A and B are distinguishable',samples:[S('A,B',{PAIR:'A,B',X:0,Z1:0,Z2:0,DIFF:0},'Both present outputs are 0.'),S('apply X=1',{PAIR:'A,B',X:1,Z1:0,Z2:0,DIFF:0},'A moves to C while B moves to D.'),S('next interval',{PAIR:'C,D',X:1,Z1:0,Z2:1,DIFF:1},'C outputs 0, D outputs 1; XOR proves the pair differs.') ]})]],
   '09':[[use(comparison,{name:'Partition refinement by successor behavior'})],[use(main['09'][0],{name:'Binary assignment: two flip-flops'}),use(main['09'][1],{name:'One-hot assignment: three flip-flops'})]],

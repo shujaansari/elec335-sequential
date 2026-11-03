@@ -118,26 +118,26 @@ window.LESSONS = [
     teach:['Load 1011 in PISO mode and ask for the output sequence before clocking.','Toggle between ring and Johnson modes and count states to reset.','Have students distinguish a bit’s entry latency from the full word’s fill latency.']
   },
   {
-    id:'06', title:'FSM synthesis, ASM and encoding', short:'FSM synthesis', reading:'Ch. 7 §7.4, pp. 450–465; Ch. 8 §§8.4–8.6, pp. 511–518', clo:'State diagrams and sequential design', time:'50 min',
-    question:'What history must a detector remember to report an overlapping pattern?',
-    outcomes:['Derive states from useful input suffixes','Design an overlapping 101 detector','Interpret an ASM block and compare binary with one-hot encoding'],
+    id:'06', title:'Finite-state machines, 101 detectors and ASM charts', short:'FSM synthesis', reading:'Ch. 8 §§8.4–8.6, pp. 511–518; FSM design support: Ch. 7 §7.4, pp. 450–465', clo:'State diagrams, state tables and sequential circuit design', time:'75 min',
+    question:'How can familiar registers and gates remember enough history to recognize 101?',
+    outcomes:['Explain an FSM as a state register with combinational next-state and output logic','Design and trace an overlapping 101 detector using a diagram and state table','Implement the state table with D flip-flops and distinguish Mealy and Moore output timing','Read and construct ASM blocks with state, decision and conditional output boxes'],
     concepts:[
-      ['State meaning','For a 101 detector, remember only suffixes that may begin the target: no useful suffix (S₀), suffix 1 (S₁), and suffix 10 (S₂).'],
+      ['State meaning','A counter is a familiar FSM. A register stores the state bits. For 101, remember no useful ending (S₀), ending 1 (S₁), or ending 10 (S₂).'],
       ['Overlap','From S₂, input 1 completes 101. That last 1 can begin another occurrence, so the next state is S₁. This produces correct detections for 10101.'],
-      ['ASM and encoding','An ASM state box gives actions during the state interval; a decision box tests inputs; a conditional output box belongs on its selected path. Binary encoding uses ⌈log₂N⌉ state bits; one-hot uses N.']
+      ['ASM and timing','One ASM block contains one state box and its decision/output paths during one state interval. The next edge enters the next state. A decision diamond does not consume another clock cycle.']
     ],
     table:{heads:['Present state','X=0: next/Z','X=1: next/Z'],rows:[['S₀ (none)','S₀ / 0','S₁ / 0'],['S₁ (1)','S₂ / 0','S₁ / 0'],['S₂ (10)','S₀ / 0','S₁ / 1']]},
     widgets:[{type:'detector',title:'Overlapping 101 detector',caption:'Enter bits one by one or play 10101. Watch the retained suffix and the detection pulse.'}],
     worked:[
-      {title:'Derive the 101 state table',prompt:'Detect every overlapping occurrence of 101 in a serial stream.',steps:['S₀ stores no useful suffix. Input 1 moves to S₁.','S₁ stores suffix 1. Input 0 moves to S₂; input 1 stays S₁.','S₂ stores suffix 10. Input 1 asserts Z=1 and moves to S₁.','Input 0 from S₂ gives 100, with no useful suffix, so return to S₀.'],answer:'The Mealy machine has three states and detects both occurrences in 10101.'},
-      {title:'Choose an encoding',prompt:'Encode a five-state controller with binary and one-hot assignments.',steps:['Binary needs ⌈log₂5⌉=3 flip-flops.','One-hot needs five flip-flops.','Binary leaves three unused codes; one-hot leaves many invalid patterns.','Compare next-state logic, reset strategy and timing before choosing.'],answer:'Storage counts are 3 versus 5; neither count alone determines the best implementation.'}
+      {title:'Overlapping detections in 10101',prompt:'Starting in S₀, trace 10101, marking the Mealy event sampled at each rising edge.',steps:['The first 1 stores S₁ and 0 stores S₂. Neither bit completes the pattern.','The third bit is 1. In S₂ it gives Z=1 and stores S₁.','Retaining S₁ preserves the last 1 for an overlapping match.','The final 01 takes S₁ to S₂ and then S₁, detecting again at bit 5.'],answer:'The sampled detection events are 0,0,1,0,1.'},
+      {title:'Read an ASM path for 1101',prompt:'Translate the state transitions for 1101 into ASM block paths.',steps:['The first 1 follows S₀ to S₁.','The second 1 follows S₁ back to S₁.','Input 0 follows S₁ to S₂.','The final 1 follows S₂ through the conditional Z=1 box to next S₁.'],answer:'One match completes at bit 4. Decision and conditional output boxes add no extra clocks.'}
     ],
     practice:[
       {q:'What state follows S₂ after input 1 in the overlapping 101 detector?',hint:'The final 1 is a useful prefix.',a:'S₁, with Z=1 on that transition.'},
-      {q:'How many state bits does binary encoding need for 12 states?',hint:'Find the smallest n with 2ⁿ≥12.',a:'Four bits.'}
+      {q:'Does an ASM decision diamond require an additional clock cycle?',hint:'Count state boxes, not decision boxes.',a:'No. The decision and conditional output paths belong to the current state interval.'}
     ],
     transfer:['Identify the shortest history that affects future output and name one state per useful history.','For every state and input, append the bit, place any output, and retain the longest useful suffix.','Only after the diagram is complete, assign codes and derive next-state equations.'],
-    pitfalls:['A detector must define a transition for both input values from every state.','A one-hot code can simplify decoding but requires valid initialization.'],
+    pitfalls:['A detector must define a transition for both input values from every state.','A raw Mealy output and a sampled detection event are different timing observations.','A decision diamond or conditional output box adds no extra state interval.'],
     teach:['Enter 10101 and pause at the first detection. Ask why the next state is S₁.','Draw the three suffix meanings before showing codes.','Translate one transition into an ASM decision path.']
   },
   {
