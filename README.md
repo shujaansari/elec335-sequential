@@ -1,19 +1,45 @@
-# ELEC 335 Sequential Circuits
+# ELEC 335 interactive sequential circuits
 
-Student website for Lectures 15–24: https://shujaansari.github.io/elec335-sequential/
+Student website: https://shujaansari.github.io/elec335-sequential/
 
-Open `index.html` to browse the interactive lessons. Each lesson includes circuit views, timing traces, worked examples, and practice questions. The index also links to the matching lecture slides.
+Open `index.html` in a current browser. The lessons also work offline when the HTML files, `assets`, and slide folders remain together. No installation or build step is required for viewing.
 
-## Edit and publish
+## Teaching sequence
 
-The site is plain HTML, CSS, and JavaScript. No build step is required. After GitHub Pages is enabled for the repository's `main` branch and root folder, every commit pushed to `main` publishes an updated site at the same URL.
+1. Lecture 15: State, latches and flip-flops.
+2. Lecture 16: Sequential circuit analysis.
+3. Lecture 17: Flip-flop excitation and synchronous counters.
+4. Lecture 18: Ripple counters and asynchronous behavior.
+5. Lecture 19: Registers and counter families.
+6. Lecture 20: Finite-state machines and 101 detectors.
+7. Lecture 21: ASM charts with Mealy and Moore detectors (`lesson-07.html`).
+8. Lecture 22: ROM implementation of digital circuits (`lesson-08.html`).
+9. Lecture 23: PLA and PAL design across the course (`lesson-09.html`).
 
-For a quick change away from the office, open the file in the GitHub repository, choose **Edit**, make the change, and commit it to `main`. To publish changes made in this local folder, run `git add .`, `git commit -m "Update lessons"`, and `git push` from here. The URL shared with students stays the same.
+The final three lessons match the concluding PowerPoint decks. They reuse the overlapping 101 detectors, synchronous MOD-6 counter, register functions, sequence generators, ripple terminal decoder and four-bit register controller. Each includes worked examples, revealable solutions, practice questions and “What should stay with you.”
 
-- Edit lesson text, examples, and questions in `assets/lessons.js`.
-- Edit the main interactive circuit views in `assets/visuals.js`.
-- Edit worked-example circuit and timing views in `assets/example-visuals.js`.
-- Edit layout and colours in `assets/style.css`.
-- Replace a file in `Slides_Course_Continuation_2026/` to update a downloadable deck while retaining its filename.
+The earlier state-reduction and state-assignment lessons remain available as optional extensions. The integrated workshop is also optional. `lesson-10.html` remains a working alias for that workshop, with no scheduled Lecture 24 label.
 
-Keep `index.html`, all `lesson-*.html` files, and the `assets/` directory together. The empty `.nojekyll` file tells GitHub Pages to publish these static files directly.
+## Animations and timing
+
+Use Next event, Previous event, Play/Pause and Reset. Detector and controller animations separate input or control preparation from the active clock edge. State, next-state data, raw outputs and recorded events use explicit observation conventions. ROM tables highlight the selected address. PLA/PAL explorers reveal literal selection, AND products and OR outputs, and compare local PAL budgets with shared PLA products.
+
+The universal-register laboratory prepares a D word before Clock stores it. Ripple animations show transient codes, asynchronous clear assertion and release. Waveform spacing is conceptual rather than measured device timing. Circuit and timing diagrams can be scrolled horizontally on small screens.
+
+Use Present to show one section at a time. Left/right arrow keys change sections, and Escape exits. Worked answers remain concealed until revealed.
+
+## Editing
+
+- Lectures 15–20: main lesson data in `assets/lessons.js`, general rendering in `assets/app.js`, and the detailed Lecture 20 lesson in `assets/lesson06.js`.
+- Lectures 21–23: lesson text, worked examples, SVG circuit views and controls in `assets/final-course.js`.
+- Shared final-lecture logic and programmed tables: `assets/final-models.js`.
+- New-lesson layout: `assets/final-course.css`; shared layout: `assets/style.css`.
+- Final slide downloads: `Slides_Final_2026/`. Earlier slide downloads remain in `Slides_Course_Continuation_2026/`.
+
+The models specify bit order, recovery policy, output polarity and clock convention. Keep those assumptions consistent when changing an example. The original examples align with Marcovitz, *Introduction to Logic Design*, third edition. Primary device references appear beside the PAL device example.
+
+## Publishing
+
+The deployment copy is the `ELEC335_Sequential_GitHub_Pages` repository. GitHub Pages publishes its `main` branch and root folder at the student URL above. A new commit updates the same URL. For a small text change away from the office, edit the corresponding file on GitHub and commit it to `main`.
+
+Keep the `.nojekyll` file, HTML files and assets together. The source folder also has `build_pages.py` for regenerating the common HTML wrappers; it preserves the nine-lecture sequence and optional extension routes.

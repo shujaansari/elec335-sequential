@@ -51,7 +51,7 @@ function render(l,helpers){
  ].map(([q,h,a],i)=>`<article><h3>Exercise ${i+1}</h3><p>${q}</p><details><summary>Hint</summary><p>${h}</p></details><details><summary>Solution</summary><p>${a}</p></details></article>`).join('')}</div>`)+
  sec('Method for textbook FSM and ASM exercises',`<ol><li>Specify input sampling, output timing, reset, and whether matches may overlap.</li><li>Name what each state remembers before assigning binary codes.</li><li>Complete every state/input transition and its output.</li><li>Translate the same behavior into a state table and ASM blocks.</li><li>Assign codes, use the flip-flop excitation rule, derive gates, and define unused codes.</li><li>Trace normal, overlapping and unsuccessful sequences at input changes and clock edges.</li></ol>`)+
  sec('What should stay with you',`<ul class="outcomes">${l.outcomes.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><p class="statement">An FSM is a state register plus combinational logic. The state diagram, table, ASM chart, gates and timing trace must all describe the same behavior.</p>`);
- document.querySelector('#footer-nav').innerHTML='<a href="lesson-05.html">← Registers and counter families</a><a href="lesson-07.html">ROM, PLA and PAL →</a>';
+ document.querySelector('#footer-nav').innerHTML='<a href="lesson-05.html">← Registers and counter families</a><a href="lesson-07.html">ASM charts →</a>';
  window.CIRCUIT_VISUALS.init('06',document.querySelector('[data-visual]'));
  document.querySelectorAll('.example-visual').forEach(el=>window.CIRCUIT_VISUALS.mount(window.EXAMPLE_VISUALS['06'][+el.dataset.example],el));
  shiftLab(document.querySelector('#shift101'));fsmLab(document.querySelector('#fsm101-lab'));initPresentation();
