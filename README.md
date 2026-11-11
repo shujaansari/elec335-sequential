@@ -22,7 +22,7 @@ The earlier state-reduction and state-assignment lessons remain available as opt
 
 ## Animations and timing
 
-Use Next event, Previous event, Play/Pause and Reset. Detector and controller animations separate input or control preparation from the active clock edge. State, next-state data, raw outputs and recorded events use explicit observation conventions. ROM tables highlight the selected address. PLA/PAL explorers reveal literal selection, AND products and OR outputs, and compare local PAL budgets with shared PLA products.
+Use Next event, Previous event, Play/Pause and Reset. Detector and controller animations separate input or control preparation from the active clock edge. State, next-state data, raw outputs and recorded events use explicit observation conventions. ROM tables and decoder/OR matrices highlight the selected address. The ROM lesson includes Marcovitz Example 5.8 with its full 16×3 program. It supports decoder and expanded fixed-AND views, programmed dots or crosses, and staged address/decode/connection/output reads. PLA/PAL explorers reveal literal selection, AND products and OR outputs, and compare local PAL budgets with shared PLA products.
 
 The universal-register laboratory prepares a D word before Clock stores it. Ripple animations show transient codes, asynchronous clear assertion and release. Waveform spacing is conceptual rather than measured device timing. Circuit and timing diagrams can be scrolled horizontally on small screens.
 
@@ -33,6 +33,7 @@ Use Present to show one section at a time. Left/right arrow keys change sections
 - Lectures 15–20: main lesson data in `assets/lessons.js`, general rendering in `assets/app.js`, and the detailed Lecture 20 lesson in `assets/lesson06.js`.
 - Lectures 21–23: lesson text, worked examples, SVG circuit views and controls in `assets/final-course.js`.
 - Shared final-lecture logic and programmed tables: `assets/final-models.js`.
+- Textbook ROM decoder/OR matrices, connection symbols and expanded fixed AND plane: `assets/rom-array.js`.
 - New-lesson layout: `assets/final-course.css`; shared layout: `assets/style.css`.
 - Final slide downloads: `Slides_Final_2026/`. Earlier slide downloads remain in `Slides_Course_Continuation_2026/`.
 

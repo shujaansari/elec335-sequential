@@ -44,6 +44,7 @@ const products={
 function evaluate(spec,inputs){const active=spec.terms.map(t=>[...t.lits].every((c,i)=>c==='–'||+c===+inputs[i]));const out=spec.outputs.map((_,j)=>+active.some((v,i)=>v&&spec.terms[i].outs.includes(j)));(spec.inverted||[]).forEach(j=>out[j]=1-out[j]);return {active,out};}
 function literalExpression(spec,t){return [...t.lits].flatMap((c,i)=>c==='–'?[]:[spec.inputs[i]+(c==='0'?'′':'')]).join('·')||'1';}
 const romSpecs={
+ textbook:{title:'Textbook Example 5.8',inputs:['A','B','C','D'],outputs:['W','X','Y'],start:7,word:a=>[[3,7,8,9,11,15],[3,4,5,7,10,14,15],[1,5,7,11,15]].map(list=>+list.includes(a)).join('')},
  xor:{title:'XOR and AND',inputs:['A','B'],outputs:['F','G'],word:a=>`${((a>>1)&1)^(a&1)}${+((a&3)===3)}`},
  adder:{title:'Full adder',inputs:['A','B','Cin'],outputs:['S','Cout'],word:a=>{const n=(a>>2)+((a>>1)&1)+(a&1);return `${n&1}${+(n>=2)}`;}},
  hold:{title:'Load/hold register bit',inputs:['E','W','Q'],outputs:['D'],word:a=>String((a>>2)?((a>>1)&1):(a&1))},
