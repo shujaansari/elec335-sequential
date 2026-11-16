@@ -1,0 +1,13 @@
+(function(root){
+'use strict';
+const rows=[
+ {clo:'CLO1',objective:'Manipulate number system, binary codes, and computer arithmetic.',topics:'Digital/analog representation; number bases and conversion; binary codes; signed numbers, complements and arithmetic.',industry:'Specify data formats, numeric ranges, signed arithmetic and overflow in embedded interfaces and datapaths.'},
+ {clo:'CLO2',objective:'Apply Boolean algebra and Karnaugh map minimization techniques to simplify Boolean expressions.',topics:'Gates; truth tables; Boolean laws; De Morgan; SOP/POS and canonical forms; NAND/NOR; K-maps, implicants and don’t-cares; XOR/parity.',industry:'Simplify control and decode logic; check equivalent functions and reduce implementation resources.'},
+ {clo:'CLO3',objective:'Design binary adders, decoders, encoders, multiplexers, and de-multiplexers to implement combinational logic circuits.',topics:'Combinational design; binary/BCD adders, subtractors and comparators; decoders, encoders; multiplexers and demultiplexers.',industry:'Build arithmetic units, address decoding, selection networks, code conversion and data routing.'},
+ {clo:'CLO4',objective:'Design with flip-flops, synchronous and asynchronous sequential circuits, state diagrams, and state tables.',topics:'SR/gated latches; D, T, JK, SR flip-flops; characteristic/excitation tables; timing; state tables/diagrams; FSMs, Mealy/Moore 101 detectors and ASMs.',industry:'Specify protocol and event controllers; verify transitions, reset, latency and asynchronous timing behavior.'},
+ {clo:'CLO5',objective:'Design registers (serial, parallel, and shift) ripple counters, and synchronous counters.',topics:'SISO/SIPO/PISO/PIPO and universal registers; shifts, load/hold; synchronous MOD-N and ripple counters; ring/Johnson and sequence generators.',industry:'Serialize and buffer data; count events; generate test patterns and timing sequences; verify initialization and rollover.'},
+ {clo:'CLO6',objective:'Design digital circuits with memory devices of ROMs, PLAs, & PALs.',topics:'ROM words/decoder arrays; PLA/PAL AND–OR programming, term sharing and fit; counters, registers, shifters, generators, detectors and controllers.',industry:'Translate specifications into programmable logic; check truth tables, product budgets, pins, feedback, clocks, reset and timing.'}
+];
+const api={rows,syllabus:'ELEC335 S26 Z01 syllabus, p. 2 (CLOs), p. 3 (outline).',note:'Engineering applications are illustrative mappings of course skills. Modern FPGA/ASIC flows use synthesis and device-specific resources; they do not reproduce every basic PAL array literally.'};
+if(typeof module!=='undefined')module.exports=api;root.COURSE_MAP=api;
+})(typeof window!=='undefined'?window:globalThis);

@@ -9,3 +9,11 @@
 .rom-array-svg .ra-mark{fill:none;stroke:#9ab9cb;stroke-width:2}.rom-array-svg .ra-connection circle{fill:#a4bdd0;stroke:#0d1d2e;stroke-width:1.5}.rom-array-svg .ra-selected circle{fill:#f9c56b;stroke:#f9c56b}.rom-array-svg .ra-selected .ra-mark,.rom-array-svg .ra-fixed.ra-selected{stroke:#f9c56b;stroke-width:3}.rom-array-svg .ra-hot-text{fill:#f9c56b;font-weight:750}
 .rom-array-svg .ra-value{fill:#14293d;stroke:#809db2;stroke-width:1.5}.rom-array-svg .ra-value-high{fill:#1b5753;stroke:#f9c56b}.rom-array-svg .ra-value-text{font-size:22px;font-weight:750}.rom-array-summary{font-variant-numeric:tabular-nums}.rom-array-summary strong{color:var(--accent2)}.rom-implementation{min-width:0}
 
+
+/* Textbook AND–OR arrays: explicit SVG colors preserve fixed/programmed marks. */
+.final-course svg.pld-array{min-width:1000px;background:#0d1b2b;padding:14px;border-radius:8px;}
+.final-course .pld-array text{font-family:Tahoma,Arial,sans-serif;}
+.final-course .pld-array-summary{padding:12px 16px;border-left:4px solid #f9c56b;background:#172537;}
+.final-course .course-map-table td{white-space:normal;min-width:230px;line-height:1.6;}
+.final-course .course-map-table td:first-child{min-width:70px;font-weight:700;}
+.final-course .table-wrap:has(>.course-map-table){max-height:none;}

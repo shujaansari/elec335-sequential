@@ -30,6 +30,12 @@ function controllerFrames(word){let q=0,data=0,index=0,serial='',frames=[];
 function universal(q,w,mode,sir,sil){return mode===0?q:mode===1?(sir<<3)|(q>>1):mode===2?((q<<1)&15)|sil:w;}
 const term=(name,lits,outs)=>({name,lits,outs});
 const products={
+ adder:{title:'Full adder',inputs:['A','B','Ci'],outputs:['S','Co'],terms:[term('P1','001',[0]),term('P2','010',[0]),term('P3','100',[0]),term('P4','111',[0]),term('P5','11–',[1]),term('P6','1–1',[1]),term('P7','–11',[1])]},
+ mux:{title:'2-to-1 multiplexer',inputs:['S','I0','I1'],outputs:['Y'],terms:[term('P1','01–',[0]),term('P2','1–1',[0])]},
+ decoder:{title:'2-to-4 decoder (active high)',inputs:['A','B'],outputs:['Y0','Y1','Y2','Y3'],terms:[term('P1','00',[0]),term('P2','01',[1]),term('P3','10',[2]),term('P4','11',[3])]},
+ ring:{title:'4-bit ring generator',inputs:['Q3','Q2','Q1','Q0'],outputs:['D3','D2','D1','D0'],terms:[term('P1','–––1',[0]),term('P2','1–––',[1]),term('P3','–1––',[2]),term('P4','––1–',[3])]},
+ johnson:{title:'3-bit Johnson generator',inputs:['Q2','Q1','Q0'],outputs:['D2','D1','D0'],terms:[term('P1','––0',[0]),term('P2','1––',[1]),term('P3','–1–',[2])]},
+ sharing:{title:'Shared AB product',inputs:['A','B','C'],outputs:['F','G'],terms:[term('P1','11–',[0,1]),term('P2','1–1',[0]),term('P3','–11',[1])]},
  xor:{title:'XOR and AND',inputs:['A','B'],outputs:['F','G'],terms:[term('P1','01',[0]),term('P2','10',[0]),term('P3','11',[1])]},
  counter:{title:'Synchronous MOD-6 D inputs',inputs:['Q2','Q1','Q0'],outputs:['D2','D1','D0'],terms:[term('P1','011',[0]),term('P2','100',[0]),term('P3','001',[1]),term('P4','010',[1]),term('P5','0–0',[2]),term('P6','–00',[2])]},
  mealy:{title:'Mealy 101 detector',inputs:['Q1','Q0','X'],outputs:['D1','D0','Z'],terms:[term('P1','010',[0]),term('P2','0–1',[1]),term('P3','101',[1,2])]},
